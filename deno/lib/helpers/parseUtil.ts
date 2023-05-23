@@ -1,5 +1,6 @@
+import { getErrorMap } from "../errors.ts";
+import defaultErrorMap from "../locales/en.ts";
 import type { IssueData, ZodErrorMap, ZodIssue } from "../ZodError.ts";
-import { defaultErrorMap, overrideErrorMap } from "../ZodError.ts";
 import type { ZodParsedType } from "./util.ts";
 
 export const makeIssue = (params: {
@@ -71,7 +72,7 @@ export function addIssueToContext(
     errorMaps: [
       ctx.common.contextualErrorMap, // contextual error map is first priority
       ctx.schemaErrorMap, // then schema-bound map if available
-      overrideErrorMap, // then global override map
+      getErrorMap(), // then global override map
       defaultErrorMap, // then global default map
     ].filter((x) => !!x) as ZodErrorMap[],
   });
@@ -135,7 +136,10 @@ export class ParseStatus {
       if (key.status === "dirty") status.dirty();
       if (value.status === "dirty") status.dirty();
 
-      if (typeof value.value !== "undefined" || pair.alwaysSet) {
+      if (
+        key.value !== "__proto__" &&
+        (typeof value.value !== "undefined" || pair.alwaysSet)
+      ) {
         finalObject[key.value] = value.value;
       }
     }
@@ -174,4 +178,4 @@ export const isValid = <T>(x: ParseReturnType<T>): x is OK<T> | DIRTY<T> =>
 export const isAsync = <T>(
   x: ParseReturnType<T>
 ): x is AsyncParseReturnType<T> =>
-  typeof Promise !== undefined && x instanceof Promise;
+  typeof Promise !== "undefined" && x instanceof Promise;

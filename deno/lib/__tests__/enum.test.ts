@@ -15,8 +15,7 @@ test("create enum", () => {
 test("infer enum", () => {
   const MyEnum = z.enum(["Red", "Green", "Blue"]);
   type MyEnum = z.infer<typeof MyEnum>;
-  const t1: util.AssertEqual<MyEnum, "Red" | "Green" | "Blue"> = true;
-  [t1];
+  util.assertEqual<MyEnum, "Red" | "Green" | "Blue">(true);
 });
 
 test("get options", () => {
@@ -27,8 +26,8 @@ test("readonly enum", () => {
   const HTTP_SUCCESS = ["200", "201"] as const;
   const arg = z.enum(HTTP_SUCCESS);
   type arg = z.infer<typeof arg>;
-  const f1: util.AssertEqual<arg, "200" | "201"> = true;
-  f1;
+  util.assertEqual<arg, "200" | "201">(true);
+
   arg.parse("201");
   expect(() => arg.parse("202")).toThrow();
 });
@@ -41,4 +40,21 @@ test("error params", () => {
   if (!result.success) {
     expect(result.error.issues[0].message).toEqual("REQUIRED");
   }
+});
+
+test("extract/exclude", () => {
+  const foods = ["Pasta", "Pizza", "Tacos", "Burgers", "Salad"] as const;
+  const FoodEnum = z.enum(foods);
+  const ItalianEnum = FoodEnum.extract(["Pasta", "Pizza"]);
+  const UnhealthyEnum = FoodEnum.exclude(["Salad"]);
+  const EmptyFoodEnum = FoodEnum.exclude(foods);
+
+  util.assertEqual<z.infer<typeof ItalianEnum>, "Pasta" | "Pizza">(true);
+  util.assertEqual<
+    z.infer<typeof UnhealthyEnum>,
+    "Pasta" | "Pizza" | "Tacos" | "Burgers"
+  >(true);
+  // @ts-expect-error TS2344
+  util.assertEqual<typeof EmptyFoodEnum, z.ZodEnum<[]>>(true);
+  util.assertEqual<z.infer<typeof EmptyFoodEnum>, never>(true);
 });

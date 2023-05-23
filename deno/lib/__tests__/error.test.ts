@@ -14,6 +14,7 @@ test("error creation", () => {
     received: ZodParsedType.string,
     path: [],
     message: "",
+    fatal: true,
   });
   err1.isEmpty;
 
@@ -315,6 +316,47 @@ test("formatting", () => {
   }
 });
 
+test("formatting with nullable and optional fields", () => {
+  const nameSchema = z.string().refine((val) => val.length > 5);
+  const schema = z.object({
+    nullableObject: z.object({ name: nameSchema }).nullable(),
+    nullableArray: z.array(nameSchema).nullable(),
+    nullableTuple: z.tuple([nameSchema, nameSchema, z.number()]).nullable(),
+    optionalObject: z.object({ name: nameSchema }).optional(),
+    optionalArray: z.array(nameSchema).optional(),
+    optionalTuple: z.tuple([nameSchema, nameSchema, z.number()]).optional(),
+  });
+  const invalidItem = {
+    nullableObject: { name: "abcd" },
+    nullableArray: ["abcd"],
+    nullableTuple: ["abcd", "abcd", 1],
+    optionalObject: { name: "abcd" },
+    optionalArray: ["abcd"],
+    optionalTuple: ["abcd", "abcd", 1],
+  };
+  const result = schema.safeParse(invalidItem);
+  expect(result.success).toEqual(false);
+  if (!result.success) {
+    type FormattedError = z.inferFormattedError<typeof schema>;
+    const error: FormattedError = result.error.format();
+    expect(error._errors).toEqual([]);
+    expect(error.nullableObject?._errors).toEqual([]);
+    expect(error.nullableObject?.name?._errors).toEqual(["Invalid input"]);
+    expect(error.nullableArray?._errors).toEqual([]);
+    expect(error.nullableArray?.[0]?._errors).toEqual(["Invalid input"]);
+    expect(error.nullableTuple?._errors).toEqual([]);
+    expect(error.nullableTuple?.[0]?._errors).toEqual(["Invalid input"]);
+    expect(error.nullableTuple?.[1]?._errors).toEqual(["Invalid input"]);
+    expect(error.optionalObject?._errors).toEqual([]);
+    expect(error.optionalObject?.name?._errors).toEqual(["Invalid input"]);
+    expect(error.optionalArray?._errors).toEqual([]);
+    expect(error.optionalArray?.[0]?._errors).toEqual(["Invalid input"]);
+    expect(error.optionalTuple?._errors).toEqual([]);
+    expect(error.optionalTuple?.[0]?._errors).toEqual(["Invalid input"]);
+    expect(error.optionalTuple?.[1]?._errors).toEqual(["Invalid input"]);
+  }
+});
+
 const stringWithCustomError = z.string({
   errorMap: (issue, ctx) => ({
     message:
@@ -377,7 +419,7 @@ test("invalid and required", () => {
   }
 });
 
-test("Fallback to invalid_type_error without required_error", () => {
+test("Fallback to default required error", () => {
   const str = z.string({
     invalid_type_error: "Invalid name",
     // required_error: "Name is required",
@@ -386,7 +428,7 @@ test("Fallback to invalid_type_error without required_error", () => {
   const result2 = str.safeParse(undefined);
   expect(result2.success).toEqual(false);
   if (!result2.success) {
-    expect(result2.error.issues[0].message).toEqual("Invalid name");
+    expect(result2.error.issues[0].message).toEqual("Required");
   }
 });
 
@@ -458,6 +500,18 @@ test("literal default error message", () => {
     expect(zerr.issues.length).toEqual(1);
     expect(zerr.issues[0].message).toEqual(
       `Invalid literal value, expected "Tuna"`
+    );
+  }
+});
+
+test("literal bigint default error message", () => {
+  try {
+    z.literal(BigInt(12)).parse(BigInt(13));
+  } catch (err) {
+    const zerr: z.ZodError = err as any;
+    expect(zerr.issues.length).toEqual(1);
+    expect(zerr.issues[0].message).toEqual(
+      `Invalid literal value, expected "12"`
     );
   }
 });
