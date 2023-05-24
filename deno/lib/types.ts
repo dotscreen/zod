@@ -193,6 +193,16 @@ export abstract class ZodType<
     status: ParseStatus;
     ctx: ParseContext;
   } {
+    // update last path entry to add object type & potential description
+    const shapeContextDescription = this._def.description
+      ? `<${this._def.description}>`
+      : undefined;
+    if (shapeContextDescription !== undefined) {
+      const last = input.path.pop();
+      input.path.push(
+        last ? `${last} ${shapeContextDescription}` : shapeContextDescription
+      );
+    }
     return {
       status: new ParseStatus(),
       ctx: {

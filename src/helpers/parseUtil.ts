@@ -28,7 +28,7 @@ export const makeIssue = (params: {
   return {
     ...issueData,
     path: fullPath,
-    message: errorMessage || issueData.message,
+    message: issueData.message || errorMessage,
   };
 };
 
